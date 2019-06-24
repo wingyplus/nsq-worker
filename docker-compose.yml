@@ -1,0 +1,59 @@
+# This proof that we can have load balancer on top of nsqd instances.
+
+version: '3.3'
+services:
+  nsqlookupd:
+    image: nsqio/nsq
+    command: /nsqlookupd
+    networks:
+      - "q"
+  
+  nsqd-1:
+    image: nsqio/nsq
+    command: /nsqd -lookupd-tcp-address=nsqlookupd:4160
+    depends_on:
+      - nsqlookupd
+    networks:
+      - "q"
+
+  nsqd-2:
+    image: nsqio/nsq
+    command: /nsqd -lookupd-tcp-address=nsqlookupd:4160
+    depends_on:
+      - nsqlookupd
+    networks:
+      - "q"
+
+  nsqd-3:
+    image: nsqio/nsq
+    command: /nsqd -lookupd-tcp-address=nsqlookupd:4160
+    depends_on:
+      - nsqlookupd
+    networks:
+      - "q"
+
+  nsq_tail:
+    image: nsqio/nsq
+    command: /nsq_tail -lookupd-http-address=nsqlookupd:4161 -channel=tail -topic=test_topic
+    depends_on:
+      - nsqlookupd
+    networks:
+      - "q"
+
+  proxy:
+    image: nginx:alpine
+    restart: always
+    depends_on:
+      - nsqd-1
+      - nsqd-2
+      - nsqd-3
+    ports:
+      - "4151:80"               # fake port
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./default.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - "q"
+
+networks:
+  q: 
